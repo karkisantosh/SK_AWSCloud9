@@ -1,0 +1,107 @@
+sudo apt update
+sudo snap install tree
+sudo apt-get install wget unzip
+If working on AWS cloud9 IDE, turn off AWS managed temporary credentials whish is on by default 
+To do that go to cloud9 Menu bar >> AWS Cloud9 >> Preferences >> AWS Settings >> Credentials
+
+# Install AWS cli2 on Ubuntu
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Set up AWS account credentials:
+aws configure set aws_access_key_id <yourAccessKey>
+aws configure set aws_secret_access_key <yourSecretKey>
+aws configure set aws_access_key_id <yourAccessKey> --profile sk
+aws configure set aws_secret_access_key <yourSecretKey> --profile sk
+aws configure set aws_access_key_id AKIAUZWAAB46CDZY2QEY --profile sk
+aws configure set aws_secret_access_key m8ridiDvlVXH9DHl76fzb/FouB7br571zd7J0KuM --profile sk
+aws configure set region us-east-1 --profile sk
+
+aws configure get region --profile sk
+aws configure get aws_access_key_id --profile sk
+aws configure get aws_secret_access_key --profile sk
+aws configure get region --profile default
+aws configure get aws_access_key_id --profile default
+aws configure get aws_secret_access_key --profile default
+aws ec2 describe-instances --profile sk
+
+#Install Terraform on Ubuntu :
+curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+sudo apt-get update && sudo apt-get install terraform
+terraform -install-autocomplete
+
+If required, move terraform dir to any PATH location
+$ sudo mv terraform /usr/local/bin
+
+# Create s3 bucket to store tf state files
+aws s3api create-bucket --bucket mytfstatebucket250676
+aws s3api create-bucket --bucket mytfstatebucket250676333 --profile sk
+
+Even after successfully creating s3 bucket, getting s3 bucket error while running terraform init command, remove .terraform directory. Use "rm -r .terraform" command
+
+# Use tf commands
+$ terraform init
+$ terraform fmt
+$ terraform validate
+$ terraform plan
+$ terraform apply
+or use this if you wanna skip user approval 'yes' e.g. in automation scenarios- $ terraform apply --auto-approve
+To see execution time i.e. the time Terraform tool to create resources, append time keyword  $ time terraform apply
+
+To see list of tf resources created on AWS:
+$ terraform state list
+
+For ssh into newly created EC2's, first of all apply appropriate permission levels to (private) ssh key file
+chmod 400 <file_path>
+$ sudo chmod 400 /home/ubuntu/environment/TF_EC2_v6/sk_pri_key
+
+
+If getting this error while running terraform validate & other command:
+The argument "region" is required, but was not set
+For this region error, its a terraform bug, set aws region as env variable.
+export AWS_DEFAULT_REGION=us-east-1
+echo $AWS_DEFAULT_REGION
+
+#############################
+
+Finding Ubuntu Images with the AWS SSM Parameter Store
+https://discourse.ubuntu.com/t/finding-ubuntu-images-with-the-aws-ssm-parameter-store/15507
+
+Canonical publishes parameters under:
+/aws/services/canonical 
+With the following hierarchy: /ubuntu/PRODUCT/RELEASE/stable/current/ARCH/VIRT_TYPE/VOL_TYPE/ami-id
+PRODUCT = server or server-minimal
+RELEASE = focal, 20.04, bionic, 18.04, xenial, or 16.04
+ARCH = amd64 or arm64
+VIRT_TYPE = pv or hvm
+VOL_TYPE = ebs-gp2, ebs-io1, ebs-standard, or instance-store
+
+e.g.
+
+$ aws ssm get-parameters --names "/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
+$ aws ssm get-parameters --names "/aws/service/canonical/ubuntu/server/18.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
+
+In Terraform, image id can be fetched using data like this example:
+
+data "aws_ssm_parameter" "sk_ubuntu2004" {
+    name = "/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
+}
+
+
+Latest Amazon Linux AMI IDs using AWS Systems Manager Parameter Store
+https://aws.amazon.com/blogs/compute/query-for-the-latest-amazon-linux-ami-ids-using-aws-systems-manager-parameter-store/
+
+Upon querying, an AMI namespace returns only its regional ImageID value.The namespace is made up of two parts:
+
+Parameter Store Prefix (tree): /aws/service/ami-amazon-linux-latest/
+AMI name alias: (example) amzn-ami-hvm-x86_64-gp2
+e.g.
+$ aws ec2 describe-images --owners amazon --filters "Name=name,Values=amzn*" --query 'sort_by(Images, &CreationDate)[].Name'
+
+Display a complete list of all available Public Parameter Amazon Linux AMIs:
+$ aws ssm get-parameters-by-path --path "/aws/service/ami-amazon-linux-latest" --region us-east-1
+
+
+
